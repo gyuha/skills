@@ -1,0 +1,23 @@
+{
+  "skill_name": "threads-post-blogger",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "이 링크를 바탕으로 기술 블로그 포스트를 써줘. 댓글은 빼고 작성자 본문 흐름만 써줘: https://www.threads.com/@choi.openai/post/DVQamrZj4vp",
+      "expected_output": "포스트 URL 검증 후, 첫 작성자 연속 포스트만 요약한 블로그 초안과 미디어 활용 섹션이 포함된다.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "https://www.threads.com 이걸로 포스팅 작성해줘",
+      "expected_output": "메인 주소를 거부하고 /post/ 형식 URL 재입력을 요청한다.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "아래 링크로 뉴스레터 톤의 글 써줘. 다른 사람 답글은 제외하고 미디어 설명도 넣어줘: https://www.threads.com/@example_creator/post/AbCdEf12345",
+      "expected_output": "연속된 동일 작성자 포스트만 반영하고, 미디어 삽입 제안이 포함된 뉴스레터형 초안을 생성한다.",
+      "files": []
+    }
+  ]
+}

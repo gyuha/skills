@@ -67,6 +67,7 @@ cp templates/SKILL.template.md skills/my-new-skill/SKILL.md
 
 - `repo-bootstrap`: 스킬 저장소를 빠르게 시작할 때 쓰는 가이드형 스킬
 - `hello-skill`: 최소 구조 예시
+- `threads-post-blogger`: Threads 포스트 URL을 기반으로 댓글을 제외한 연속 작성자 본문만 정리해 블로그 초안을 작성
 
 ## Compatibility Notes
 
