@@ -69,8 +69,37 @@ Extract from `$ARGUMENTS`:
 | `--quality` | `low`, `medium`, `high`, `auto` | `auto` | Generation quality / 생성 품질 |
 | `--out` | directory path | project root | Save location / 저장 위치 |
 | `-n` | 1–10 | `1` | Number of images / 생성 장수 |
+| `--transparent` | (no value) | off | Force transparent-PNG mode / 투명 PNG 모드 강제 |
 
 Remaining text → image prompt / 나머지 텍스트 → 이미지 프롬프트
+
+### Transparent mode detection / 투명 모드 감지
+
+Set `_TRANSPARENT=1` when **either** is true:
+
+1. The `--transparent` flag is present.
+2. The image prompt contains a transparency keyword (**case-insensitive**):
+   - KO: `투명`, `투명배경`, `투명 배경`, `누끼`, `배경 제거`, `배경 없`
+   - EN: `transparent`, `transparency`, `alpha channel`, `no background`, `cutout`
+
+```bash
+_TRANSPARENT=0
+case "${_ARGS}" in *"--transparent"*) _TRANSPARENT=1 ;; esac
+# prompt keyword scan (case-insensitive); strip --transparent first so it isn't re-matched
+_PROMPT_LC=$(printf '%s' "${_PROMPT}" | tr '[:upper:]' '[:lower:]')
+for _kw in "투명" "누끼" "배경 제거" "배경 없" "transparent" "transparency" "alpha channel" "no background" "cutout"; do
+  case "${_PROMPT_LC}" in *"${_kw}"*) _TRANSPARENT=1 ;; esac
+done
+```
+
+> Why prompt-only, not an API param: this skill goes through `codex exec` → built-in
+> `image_gen`, so the OpenAI `background: "transparent"` parameter is not reachable.
+> The only lever is the prompt text — so transparent mode is a **best-effort prompt
+> injection**, and true alpha output still depends on the model supporting it.
+>
+> codex exec 경유라 API의 `background: "transparent"` 파라미터에 접근 불가 — 유일한
+> 레버는 프롬프트 텍스트뿐이라 best-effort 프롬프트 주입이며, 진짜 알파 출력 여부는
+> 모델 지원에 달렸다.
 
 If prompt is empty, ask via AskUserQuestion:
 > "What image should I generate? Enter a prompt."
@@ -101,6 +130,23 @@ command (a prompt like `a "vintage" poster` is perfectly normal):
 # Ceiling: backticks and $ in the prompt can still trigger shell substitution —
 # if that surfaces in practice, wrap the prompt in a quoted heredoc / single quotes instead.
 _PROMPT="${_PROMPT//\"/\'}"
+```
+
+When transparent mode is on (`_TRANSPARENT=1`, see Step 2), append the transparent-PNG
+keyword formula. The three anchor phrases — `true transparent background`, `alpha channel`,
+`no fake transparency` — are mandatory: without them the rest is nullified and a white
+background returns.
+
+```bash
+if [ "${_TRANSPARENT}" = "1" ]; then
+  # Warn (do NOT auto-strip) if the prompt itself carries a background instruction —
+  # any background keyword nullifies the transparency formula.
+  case "$(printf '%s' "${_PROMPT}" | tr '[:upper:]' '[:lower:]')" in
+    *"흰 배경"*|*"흰배경"*|*"white background"*|*"배경 색"*|*"background color"*|*"solid background"*)
+      echo "⚠ 프롬프트에 배경 지시가 있어 투명이 무력화될 수 있습니다. 배경 문구 제거를 권장합니다." ;;
+  esac
+  _PROMPT="${_PROMPT} — isolated subject, true transparent background, alpha channel, PNG with transparency, no background, no shadow, no reflection, no checkerboard pattern, no fake transparency, clean edges, centered composition"
+fi
 ```
 
 ```bash
@@ -152,6 +198,10 @@ Auth: OAuth (ChatGPT)
 **Always display the generated image using the Read tool.**
 **생성된 이미지를 반드시 Read 도구로 표시한다.**
 
+When transparent mode was on, also print this caveat / 투명 모드였다면 아래 caveat도 출력:
+> "Transparent mode — verify the saved PNG actually has an alpha channel. If the model doesn't support transparency, it may return a white or checkerboard background instead."
+> "투명 모드 — 저장된 PNG에 실제 알파 채널이 있는지 확인하세요. 모델이 투명도를 지원하지 않으면 흰/체크무늬 배경이 나올 수 있습니다."
+
 ## Step 6 — Follow-up / 후속 안내
 
 - "Run `/codex-image` again to generate another image."
@@ -173,3 +223,4 @@ Auth: OAuth (ChatGPT)
 - Never overwrite existing files — always use timestamped filenames / 기존 파일 덮어쓰기 금지
 - OAuth only — do not attempt direct REST API calls with OAuth token (returns 401) / OAuth 토큰으로 REST API 직접 호출 금지
 - Verify prompt intent before generating / 생성 전 프롬프트 의도 확인
+- Transparent mode (keyword or `--transparent`): inject the alpha-channel formula and never mix in a background-color instruction; true alpha depends on model support — surface the verify caveat / 투명 모드(키워드 또는 `--transparent`): 알파 채널 공식을 주입하고 배경색 지시를 섞지 않는다. 진짜 알파는 모델 지원에 종속되므로 확인 caveat를 안내
