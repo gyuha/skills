@@ -132,32 +132,61 @@ command (a prompt like `a "vintage" poster` is perfectly normal):
 _PROMPT="${_PROMPT//\"/\'}"
 ```
 
-When transparent mode is on (`_TRANSPARENT=1`, see Step 2), append the transparent-PNG
-keyword formula. The three anchor phrases — `true transparent background`, `alpha channel`,
-`no fake transparency` — are mandatory: without them the rest is nullified and a white
-background returns.
+When transparent mode is on (`_TRANSPARENT=1`, see Step 2), append the structured
+transparent-PNG generation block below. It is explicit about a *real alpha channel* and
+forbids fake/baked transparency — without that the model fills the background with white.
 
 ```bash
 if [ "${_TRANSPARENT}" = "1" ]; then
   # Warn (do NOT auto-strip) if the prompt itself carries a background instruction —
-  # any background keyword nullifies the transparency formula.
+  # any background keyword nullifies the transparency directive.
   case "$(printf '%s' "${_PROMPT}" | tr '[:upper:]' '[:lower:]')" in
     *"흰 배경"*|*"흰배경"*|*"white background"*|*"배경 색"*|*"background color"*|*"solid background"*)
       echo "⚠ 프롬프트에 배경 지시가 있어 투명이 무력화될 수 있습니다. 배경 문구 제거를 권장합니다." ;;
   esac
-  _PROMPT="${_PROMPT} — isolated subject, true transparent background, alpha channel, PNG with transparency, no background, no shadow, no reflection, no checkerboard pattern, no fake transparency, clean edges, centered composition"
+  _PROMPT="${_PROMPT}
+
+Create a PNG with a true transparent background.
+
+Requirements:
+- The output must contain a real alpha channel.
+- Background pixels must have alpha = 0.
+- Do not draw a checkerboard pattern.
+- Do not simulate transparency using gray, white, or colored squares.
+- Do not include any backdrop, canvas, shadow, glow, or border.
+- Return only the isolated subject, centered, with clean edges."
 fi
 ```
 
+In transparent mode, ask Codex to verify the saved PNG actually has transparency and to
+regenerate **at most once** if it doesn't — and give it a longer timeout, since a
+generate → inspect → regenerate pass needs more than a single generation.
+
 ```bash
+_VERIFY=""
+_TIMEOUT=120000   # 2 min
+if [ "${_TRANSPARENT}" = "1" ]; then
+  _TIMEOUT=180000  # 3 min — room for one verify+regenerate pass
+  _VERIFY="
+7. After saving, verify the PNG with image tooling (e.g. Python Pillow):
+   - the image mode is RGBA,
+   - at least some pixels have alpha == 0,
+   - the four corner pixels are fully transparent (alpha == 0).
+8. Best-effort: if a checkerboard pattern looks baked into the RGB channels (fake
+   transparency), treat it as a failure. If you are not confident, let it pass.
+9. If verification fails, regenerate the image ONCE with stronger transparency
+   instructions, then re-verify. Do not loop more than one regeneration.
+10. Report the verification result (RGBA? alpha==0 pixels? corners transparent?) and the saved path."
+fi
+
 codex exec "Perform the following tasks:
 1. Use the built-in image_gen tool to generate an image.
 2. Prompt: '${_PROMPT}'
 3. Size: ${_SIZE}
 4. Quality: ${_QUALITY}
 5. Count: ${_N}
-6. Copy the generated image to '${_OUT_DIR}/${_FILENAME}.png'. For multiple images use -1.png, -2.png suffix.
-7. Print the saved file path and size." \
+6. Copy the generated image to '${_OUT_DIR}/${_FILENAME}.png'. For multiple images use -1.png, -2.png suffix.${_VERIFY}
+Finally, print the saved file path and size." \
   -C "${_PROJECT_ROOT}" \
   -s workspace-write \
   -c 'model_reasoning_effort="medium"' \
@@ -165,7 +194,8 @@ codex exec "Perform the following tasks:
   2>&1
 ```
 
-timeout: 120000ms (2 min)
+timeout: `${_TIMEOUT}` — 120000ms (2 min) normally, 180000ms (3 min) in transparent mode
+(extra room for the one verify+regenerate pass).
 
 ### Required flags / 필수 플래그
 
@@ -198,9 +228,10 @@ Auth: OAuth (ChatGPT)
 **Always display the generated image using the Read tool.**
 **생성된 이미지를 반드시 Read 도구로 표시한다.**
 
-When transparent mode was on, also print this caveat / 투명 모드였다면 아래 caveat도 출력:
-> "Transparent mode — verify the saved PNG actually has an alpha channel. If the model doesn't support transparency, it may return a white or checkerboard background instead."
-> "투명 모드 — 저장된 PNG에 실제 알파 채널이 있는지 확인하세요. 모델이 투명도를 지원하지 않으면 흰/체크무늬 배경이 나올 수 있습니다."
+When transparent mode was on, surface Codex's self-verification result and this caveat /
+투명 모드였다면 codex의 자체 검증 결과와 아래 caveat를 함께 출력:
+> "Transparent mode — Codex was asked to verify the saved PNG (RGBA, alpha==0, transparent corners) and regenerate once if it failed. Confirm the reported result; if the model can't produce real transparency, even a regenerate may return a white or checkerboard background."
+> "투명 모드 — codex가 저장된 PNG를 자체 검증(RGBA·alpha==0·모서리 투명)하고 실패 시 1회 재생성하도록 지시했습니다. 보고된 검증 결과를 확인하세요. 모델이 실제 투명도를 못 만들면 재생성해도 흰/체크무늬 배경이 나올 수 있습니다."
 
 ## Step 6 — Follow-up / 후속 안내
 
@@ -223,4 +254,4 @@ When transparent mode was on, also print this caveat / 투명 모드였다면 �
 - Never overwrite existing files — always use timestamped filenames / 기존 파일 덮어쓰기 금지
 - OAuth only — do not attempt direct REST API calls with OAuth token (returns 401) / OAuth 토큰으로 REST API 직접 호출 금지
 - Verify prompt intent before generating / 생성 전 프롬프트 의도 확인
-- Transparent mode (keyword or `--transparent`): inject the alpha-channel formula and never mix in a background-color instruction; true alpha depends on model support — surface the verify caveat / 투명 모드(키워드 또는 `--transparent`): 알파 채널 공식을 주입하고 배경색 지시를 섞지 않는다. 진짜 알파는 모델 지원에 종속되므로 확인 caveat를 안내
+- Transparent mode (keyword or `--transparent`): inject the structured transparent-PNG block and never mix in a background-color instruction; Codex self-verifies the saved PNG (RGBA / alpha==0 / transparent corners) and regenerates at most once, with a 180s timeout; checkerboard detection is best-effort; true alpha still depends on model support — surface the result + caveat / 투명 모드(키워드 또는 `--transparent`): 구조화 투명 블록을 주입하고 배경색 지시를 섞지 않는다. codex가 저장 PNG를 자체 검증(RGBA·alpha==0·모서리 투명)하고 최대 1회 재생성하며 timeout은 180s, 체크무늬 검출은 best-effort, 진짜 알파는 모델 지원에 종속 — 결과와 caveat를 안내
