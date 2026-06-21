@@ -133,8 +133,10 @@ _PROMPT="${_PROMPT//\"/\'}"
 ```
 
 When transparent mode is on (`_TRANSPARENT=1`, see Step 2), append the structured
-transparent-PNG generation block below. It is explicit about a *real alpha channel* and
+transparent-PNG generation guide below. It is explicit about a *real alpha channel* and
 forbids fake/baked transparency — without that the model fills the background with white.
+The closing sentence is the **prompt suffix**: it supplements the structured prompt block
+above, it does not replace it.
 
 ```bash
 if [ "${_TRANSPARENT}" = "1" ]; then
@@ -148,13 +150,18 @@ if [ "${_TRANSPARENT}" = "1" ]; then
 
 Create a PNG with a true transparent background.
 
-Requirements:
-- The output must contain a real alpha channel.
-- Background pixels must have alpha = 0.
-- Do not draw a checkerboard pattern.
-- Do not simulate transparency using gray, white, or colored squares.
-- Do not include any backdrop, canvas, shadow, glow, or border.
-- Return only the isolated subject, centered, with clean edges."
+Image requirements — the final image must contain only the requested subject. Do NOT include:
+- checkerboard patterns
+- white, black, gray, or colored backdrop
+- canvas or rectangular plate
+- frame or border
+- external drop shadow
+- external glow
+- floor, wall, room, or environment
+- opaque corner pixels
+Internal shading and highlights that belong to the subject are allowed.
+
+Isolated subject only. No environment, backdrop, canvas, checkerboard pattern, square background, border, external shadow, or external glow. The area outside the subject must be fully transparent with alpha 0."
 fi
 ```
 
@@ -168,15 +175,19 @@ _TIMEOUT=120000   # 2 min
 if [ "${_TRANSPARENT}" = "1" ]; then
   _TIMEOUT=180000  # 3 min — room for one verify+regenerate pass
   _VERIFY="
-7. After saving, verify the PNG with image tooling (e.g. Python Pillow):
-   - the image mode is RGBA,
-   - at least some pixels have alpha == 0,
-   - the four corner pixels are fully transparent (alpha == 0).
-8. Best-effort: if a checkerboard pattern looks baked into the RGB channels (fake
-   transparency), treat it as a failure. If you are not confident, let it pass.
-9. If verification fails, regenerate the image ONCE with stronger transparency
+7. After saving, verify the PNG with image tooling (e.g. Python Pillow). It must satisfy ALL:
+   (1) the file format is PNG,
+   (2) the image mode is RGBA (or otherwise has a real alpha channel),
+   (3) at least one pixel has alpha == 0,
+   (4) all four corner pixels have alpha == 0,
+   (5) the alpha channel is not entirely 255 (not fully opaque),
+   (6) a meaningful transparent area exists outside the subject (a non-trivial fraction of
+       pixels have alpha == 0, not just a few — best-effort threshold),
+   (7) the RGB image does not contain a baked-in checkerboard pretending to be transparency
+       (best-effort: if you are not confident it is baked-in, let it pass).
+8. If any of (1)-(7) fails, regenerate the image ONCE with stronger transparency
    instructions, then re-verify. Do not loop more than one regeneration.
-10. Report the verification result (RGBA? alpha==0 pixels? corners transparent?) and the saved path."
+9. Report the 7-point verification result (which passed/failed) and the saved path."
 fi
 
 codex exec "Perform the following tasks:
@@ -230,8 +241,8 @@ Auth: OAuth (ChatGPT)
 
 When transparent mode was on, surface Codex's self-verification result and this caveat /
 투명 모드였다면 codex의 자체 검증 결과와 아래 caveat를 함께 출력:
-> "Transparent mode — Codex was asked to verify the saved PNG (RGBA, alpha==0, transparent corners) and regenerate once if it failed. Confirm the reported result; if the model can't produce real transparency, even a regenerate may return a white or checkerboard background."
-> "투명 모드 — codex가 저장된 PNG를 자체 검증(RGBA·alpha==0·모서리 투명)하고 실패 시 1회 재생성하도록 지시했습니다. 보고된 검증 결과를 확인하세요. 모델이 실제 투명도를 못 만들면 재생성해도 흰/체크무늬 배경이 나올 수 있습니다."
+> "Transparent mode — Codex was asked to run the 7-point PNG verification (PNG format, RGBA, alpha==0 pixels, transparent corners, alpha not all-255, meaningful transparent area, no baked-in checkerboard) and regenerate once if any check failed. Confirm the reported result; if the model can't produce real transparency, even a regenerate may return a white or checkerboard background."
+> "투명 모드 — codex가 7항목 PNG 검증(PNG 포맷·RGBA·alpha==0 픽셀·모서리 투명·alpha 전체 255 아님·의미 있는 투명 영역·구워진 체크무늬 없음)을 수행하고 실패 시 1회 재생성하도록 지시했습니다. 보고된 검증 결과를 확인하세요. 모델이 실제 투명도를 못 만들면 재생성해도 흰/체크무늬 배경이 나올 수 있습니다."
 
 ## Step 6 — Follow-up / 후속 안내
 
@@ -254,4 +265,4 @@ When transparent mode was on, surface Codex's self-verification result and this 
 - Never overwrite existing files — always use timestamped filenames / 기존 파일 덮어쓰기 금지
 - OAuth only — do not attempt direct REST API calls with OAuth token (returns 401) / OAuth 토큰으로 REST API 직접 호출 금지
 - Verify prompt intent before generating / 생성 전 프롬프트 의도 확인
-- Transparent mode (keyword or `--transparent`): inject the structured transparent-PNG block and never mix in a background-color instruction; Codex self-verifies the saved PNG (RGBA / alpha==0 / transparent corners) and regenerates at most once, with a 180s timeout; checkerboard detection is best-effort; true alpha still depends on model support — surface the result + caveat / 투명 모드(키워드 또는 `--transparent`): 구조화 투명 블록을 주입하고 배경색 지시를 섞지 않는다. codex가 저장 PNG를 자체 검증(RGBA·alpha==0·모서리 투명)하고 최대 1회 재생성하며 timeout은 180s, 체크무늬 검출은 best-effort, 진짜 알파는 모델 지원에 종속 — 결과와 caveat를 안내
+- Transparent mode (keyword or `--transparent`): inject the structured transparent-PNG guide (full do-not list + isolated-subject suffix; internal subject shading is allowed) and never mix in a background-color instruction; Codex runs the 7-point PNG verification (PNG / RGBA / alpha==0 pixels / transparent corners / alpha not all-255 / meaningful transparent area / no baked-in checkerboard) and regenerates at most once, with a 180s timeout; the transparent-area and checkerboard checks are best-effort; true alpha still depends on model support — surface the result + caveat / 투명 모드(키워드 또는 `--transparent`): 구조화 투명 가이드(전체 금지 목록 + isolated-subject suffix, 피사체 자체 음영은 허용)를 주입하고 배경색 지시를 섞지 않는다. codex가 7항목 PNG 검증(PNG·RGBA·alpha==0 픽셀·모서리 투명·alpha 전체 255 아님·의미 있는 투명 영역·구워진 체크무늬 없음)을 수행하고 최대 1회 재생성하며 timeout 180s, 투명 영역·체크무늬 검출은 best-effort, 진짜 알파는 모델 지원에 종속 — 결과와 caveat를 안내
