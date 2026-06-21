@@ -45,6 +45,7 @@ npx skills add gyuha/skills --skill agent-browser
 | **playwright-cli** | Playwright를 사용한 브라우저 자동화. 웹 테스트, 폼 작성, 스크린샷, 데이터 추출 등 |
 | **skill-creator** | 새 스킬 생성, 기존 스킬 개선, 스킬 성능 측정 및 평가 |
 | **threads-blog-post** | Threads.net 포스트를 블로그 글로 변환 (한국어) |
+| **codex-image** | Codex CLI의 내장 image_gen(gpt-image-2)으로 이미지 생성. OAuth 인증으로 API 키 불필요 |
 | **repo-bootstrap** | 일관된 폴더 구조와 설치 가능한 SKILL.md 파일로 새 스킬 저장소 스캐폴딩 |
 | **hello-skill** | 설치 및 디스커버리 검증을 위한 최소 예시 스킬 |
 
