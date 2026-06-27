@@ -30,6 +30,7 @@ This is a **skills repository** compatible with `npx skills add <owner>/<repo>` 
 - `skill-creator` - Create and improve skills with eval/benchmark workflow
 - `agent-browser` - Browser automation via agent-browser CLI
 - `playwright-cli` - Browser automation via Playwright CLI
+- `game-asset-studio` - Step-by-step wizard generating game image assets + uniform-grid sprite sheets (codex exec/gpt-image-2, optional pixelization)
 
 ## Common Commands
 

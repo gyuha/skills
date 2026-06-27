@@ -33,6 +33,7 @@ npx skills add gyuha/skills --skill agent-browser
     ├── playwright-cli/
     ├── skill-creator/
     ├── threads-blog-post/
+    ├── game-asset-studio/
     ├── repo-bootstrap/
     └── hello-skill/
 ```
@@ -46,6 +47,7 @@ npx skills add gyuha/skills --skill agent-browser
 | **skill-creator** | 새 스킬 생성, 기존 스킬 개선, 스킬 성능 측정 및 평가 |
 | **threads-blog-post** | Threads.net 포스트를 블로그 글로 변환 (한국어) |
 | **codex-image** | Codex CLI의 내장 image_gen(gpt-image-2)으로 이미지 생성. OAuth 인증으로 API 키 불필요 |
+| **game-asset-studio** | 단계별 위저드로 게임 이미지 에셋(캐릭터·아이템·타일·아이콘)을 투명 PNG로 생성하고 균일 그리드 스프라이트 시트+manifest로 패킹. 옵션 픽셀화 후처리 |
 | **repo-bootstrap** | 일관된 폴더 구조와 설치 가능한 SKILL.md 파일로 새 스킬 저장소 스캐폴딩 |
 | **hello-skill** | 설치 및 디스커버리 검증을 위한 최소 예시 스킬 |
 
